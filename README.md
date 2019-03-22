@@ -21,6 +21,11 @@
 go get github.com/JetBlink/dingtalk-notify-go-sdk
 ```
 
+## Run Test
+```
+ROBOT_TOKEN=your_robot_token go test
+```
+
 ## Usage
 
 ### 获取实例
