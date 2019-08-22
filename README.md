@@ -97,7 +97,7 @@ robot.SendLinkMessage(
 ## 官方文档
 
 * [自定义机器人](https://open-doc.dingtalk.com/docs/doc.htm?spm=a219a.7629140.0.0.karFPe&treeId=257&articleId=105735&docType=1)
-* [消息类型及数据格式](https://open-doc.dingtalk.com/docs/doc.htm?treeId=172&articleId=104972&docType=1)
+* [消息类型及数据格式](https://ding-doc.dingtalk.com/doc#/serverapi2/qf2nxq)
 > 每个机器人每分钟最多发送**20条**。
 
 ## License
