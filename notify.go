@@ -2,60 +2,82 @@ package dingtalk_robot
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
-func NewRobot(token string) *Robot {
+func NewRobot(token, secret string) *Robot {
 	return &Robot{
-		token: token,
+		token:  token,
+		secret: secret,
 	}
 }
 
-const baseUrl = "https://oapi.dingtalk.com/robot/send?access_token=%s"
+const (
+	baseUrl = "https://oapi.dingtalk.com/robot/send?access_token=%s&timestamp=%d&sign=%s"
+)
+
+func sign(t int64, secret string) string {
+	str := fmt.Sprintf("%d\n%s", t, secret)
+	hash := sha256.New()
+	hash.Write([]byte(str))
+	data := hash.Sum(nil)
+
+	bs64Encoder := base64.StdEncoding
+	bs64 := bs64Encoder.EncodeToString(data)
+	src := make([]byte, bs64Encoder.EncodedLen(len(data)))
+	bs64Encoder.Encode(src, data)
+
+	urlEncoder := base64.URLEncoding
+	return urlEncoder.EncodeToString([]byte(bs64))
+}
 
 type Robot struct {
-	token string
+	token, secret string
 }
 
 func (robot *Robot) SendMessage(msg interface{}) error {
-	jsonMsg, err := json.Marshal(msg)
+	body := bytes.NewBuffer(nil)
+	err := json.NewEncoder(body).Encode(msg)
 	if err != nil {
-		return errors.New(fmt.Sprintf("msg json failed, msg: %v, err: %v", msg, err.Error()))
+		return fmt.Errorf("msg json failed, msg: %v, err: %v", msg, err.Error())
 	}
 
-	body := bytes.NewBuffer([]byte(jsonMsg))
-	url := fmt.Sprintf(baseUrl, robot.token)
+	t := time.Now().Unix()
+
+	url := fmt.Sprintf(baseUrl, robot.token, t, sign(t, robot.secret))
+
 	res, err := http.Post(url, "application/json;charset=utf-8", body)
 	if err != nil {
-		return errors.New(fmt.Sprintf("send dingTalk message failed, error: %v", err.Error()))
+		return fmt.Errorf("send dingTalk message failed, error: %v", err.Error())
 	}
 
 	if res.StatusCode != 200 {
-		return errors.New(fmt.Sprintf("send dingTalk message failed, status code: %v", res.StatusCode))
+		return fmt.Errorf("send dingTalk message failed, status code: %v", res.StatusCode)
 	}
 
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	result, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return errors.New(fmt.Sprintf("send dingTalk message failed, error: %v", err.Error()))
+		return fmt.Errorf("send dingTalk message failed, error: %v", err.Error())
 	}
 
 	type response struct {
 		ErrCode int `json:"errcode"`
 	}
-
 	var ret response
 
-	if err := json.Unmarshal([]byte(result), &ret); err != nil {
-		return errors.New(fmt.Sprintf("send dingTalk message failed, result: %s, error: %v", result, err.Error()))
+	if err := json.Unmarshal(result, &ret); err != nil {
+		return fmt.Errorf("send dingTalk message failed, result: %s, error: %v", result, err.Error())
 	}
 
 	if ret.ErrCode != 0 {
-		return errors.New(fmt.Sprintf("send dingTalk message failed, result: %s", result))
+		return fmt.Errorf("send dingTalk message failed, result: %s", result)
 	}
 
 	return nil
