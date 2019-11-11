@@ -2,12 +2,14 @@ package dingtalk_robot
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -18,23 +20,12 @@ func NewRobot(token, secret string) *Robot {
 	}
 }
 
-const (
-	baseUrl = "https://oapi.dingtalk.com/robot/send?access_token=%s&timestamp=%d&sign=%s"
-)
-
 func sign(t int64, secret string) string {
-	str := fmt.Sprintf("%d\n%s", t, secret)
-	hash := sha256.New()
-	hash.Write([]byte(str))
-	data := hash.Sum(nil)
-
-	bs64Encoder := base64.StdEncoding
-	bs64 := bs64Encoder.EncodeToString(data)
-	src := make([]byte, bs64Encoder.EncodedLen(len(data)))
-	bs64Encoder.Encode(src, data)
-
-	urlEncoder := base64.URLEncoding
-	return urlEncoder.EncodeToString([]byte(bs64))
+	strToHash := fmt.Sprintf("%d\n%s", t, secret)
+	hmac256 := hmac.New(sha256.New, []byte(secret))
+	hmac256.Write([]byte(strToHash))
+	data := hmac256.Sum(nil)
+	return base64.StdEncoding.EncodeToString(data)
 }
 
 type Robot struct {
@@ -47,12 +38,20 @@ func (robot *Robot) SendMessage(msg interface{}) error {
 	if err != nil {
 		return fmt.Errorf("msg json failed, msg: %v, err: %v", msg, err.Error())
 	}
+	t := time.Now().UnixNano() / 1e6
 
-	t := time.Now().Unix()
+	value := url.Values{}
+	value.Set("access_token", robot.token)
+	value.Set("timestamp", fmt.Sprintf("%d", t))
+	value.Set("sign", sign(t, robot.secret))
 
-	url := fmt.Sprintf(baseUrl, robot.token, t, sign(t, robot.secret))
-
-	res, err := http.Post(url, "application/json;charset=utf-8", body)
+	request, err := http.NewRequest(http.MethodPost, "https://oapi.dingtalk.com//robot/send", body)
+	if err != nil {
+		return fmt.Errorf("error request: %v", err.Error())
+	}
+	request.URL.RawQuery = value.Encode()
+	request.Header.Add("Content-Type", "application/json;charset=utf-8")
+	res, err := (&http.Client{}).Do(request)
 	if err != nil {
 		return fmt.Errorf("send dingTalk message failed, error: %v", err.Error())
 	}
