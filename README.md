@@ -1,5 +1,5 @@
 # DingTalk Notify
-钉钉机器人通知。dingtalk robot notification sdk.
+钉钉机器人通知(支持加签）。dingtalk robot notification sdk.
 
 ## Overview
 
@@ -22,8 +22,15 @@ go get github.com/JetBlink/dingtalk-notify-go-sdk
 ```
 
 ## Run Test
+
+* 不带签名机器人
 ```
 ROBOT_TOKEN=your_robot_token go test
+```
+
+* 带签名的机器人
+```
+ROBOT_TOKEN=your_robot_token ROBOT_SECRET=your_robot_secret go test
 ```
 
 ## Usage
@@ -36,7 +43,7 @@ import (
 )
 
 func main() {
-	robot := dingtalk_robot.NewRobot("your dingtalk robot token")
+	robot := dingtalk_robot.NewRobot("your robot token", "your robot secret")
 }
   ```
 
@@ -56,7 +63,7 @@ msg := map[string]interface{}{
 	},
 }
 
-robot := dingtalk_robot.NewRobot(os.Getenv("ROBOT_TOKEN"))
+robot := dingtalk_robot.NewRobot(os.Getenv("ROBOT_TOKEN"), os.Getenv("ROBOT_SECRET"))
 if err := robot.SendMessage(msg); err != nil {
 	t.Error(err)
 }
@@ -92,12 +99,11 @@ robot.SendLinkMessage(
 
 ### Tips
 
-文本消息和Markdown消息都支持**@指定手机号**和**@所有人**，参数位置见具体方法。
+文本消息和Markdown消息都支持**@指定手机号**和**@所有人**，参数位置见具体方法
 
 ## 官方文档
 
-* [自定义机器人](https://open-doc.dingtalk.com/docs/doc.htm?spm=a219a.7629140.0.0.karFPe&treeId=257&articleId=105735&docType=1)
-* [消息类型及数据格式](https://ding-doc.dingtalk.com/doc#/serverapi2/qf2nxq)
+* [自定义机器人](https://ding-doc.dingtalk.com/doc#/serverapi2/qf2nxq)
 > 每个机器人每分钟最多发送**20条**。
 
 ## License
