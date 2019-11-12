@@ -57,15 +57,14 @@ func (robot *Robot) SendMessage(msg interface{}) error {
 	if err != nil {
 		return fmt.Errorf("send dingTalk message failed, error: %v", err.Error())
 	}
-
-	if res.StatusCode != 200 {
-		return fmt.Errorf("send dingTalk message failed, status code: %v", res.StatusCode)
-	}
-
 	defer func() { _ = res.Body.Close() }()
 	result, err := ioutil.ReadAll(res.Body)
+
+	if res.StatusCode != 200 {
+		return fmt.Errorf("send dingTalk message failed, %s", httpError(request, res, result, "http code is not 200"))
+	}
 	if err != nil {
-		return fmt.Errorf("send dingTalk message failed, error: %v", err.Error())
+		return fmt.Errorf("send dingTalk message failed, %s", httpError(request, res, result, err.Error()))
 	}
 
 	type response struct {
@@ -74,14 +73,25 @@ func (robot *Robot) SendMessage(msg interface{}) error {
 	var ret response
 
 	if err := json.Unmarshal(result, &ret); err != nil {
-		return fmt.Errorf("send dingTalk message failed, result: %s, error: %v", result, err.Error())
+		return fmt.Errorf("send dingTalk message failed, %s", httpError(request, res, result, err.Error()))
 	}
 
 	if ret.ErrCode != 0 {
-		return fmt.Errorf("send dingTalk message failed, result: %s", result)
+		return fmt.Errorf("send dingTalk message failed, %s", httpError(request, res, result, "errcode is not 0"))
 	}
 
 	return nil
+}
+
+func httpError(request *http.Request, response *http.Response, body []byte, error string) string {
+	return fmt.Sprintf(
+		"http request failure, error: %s, status code: %d, %s %s, body:\n%s",
+		error,
+		response.StatusCode,
+		request.Method,
+		request.URL.String(),
+		string(body),
+	)
 }
 
 func (robot *Robot) SendTextMessage(content string, atMobiles []string, isAtAll bool) error {
