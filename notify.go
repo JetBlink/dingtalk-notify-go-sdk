@@ -38,14 +38,16 @@ func (robot *Robot) SendMessage(msg interface{}) error {
 	if err != nil {
 		return fmt.Errorf("msg json failed, msg: %v, err: %v", msg, err.Error())
 	}
-	t := time.Now().UnixNano() / 1e6
 
 	value := url.Values{}
 	value.Set("access_token", robot.token)
-	value.Set("timestamp", fmt.Sprintf("%d", t))
-	value.Set("sign", sign(t, robot.secret))
+	if robot.secret != "" {
+		t := time.Now().UnixNano() / 1e6
+		value.Set("timestamp", fmt.Sprintf("%d", t))
+		value.Set("sign", sign(t, robot.secret))
+	}
 
-	request, err := http.NewRequest(http.MethodPost, "https://oapi.dingtalk.com//robot/send", body)
+	request, err := http.NewRequest(http.MethodPost, "https://oapi.dingtalk.com/robot/send", body)
 	if err != nil {
 		return fmt.Errorf("error request: %v", err.Error())
 	}
